@@ -408,18 +408,43 @@
     const nextButton = document.querySelector("#next-button");
     let current = 0;
     let score = 0;
+    let missionQuestions = [];
+
+    function shuffle(items) {
+      const shuffled = [...items];
+      for (let index = shuffled.length - 1; index > 0; index -= 1) {
+        const randomIndex = Math.floor(Math.random() * (index + 1));
+        [shuffled[index], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[index]];
+      }
+      return shuffled;
+    }
+
+    function prepareMission() {
+      missionQuestions = shuffle(questions).map(item => {
+        const answers = item.answers.map((answer, index) => ({
+          text: answer,
+          isCorrect: index === item.correct
+        }));
+        const shuffledAnswers = shuffle(answers);
+        return {
+          ...item,
+          answers: shuffledAnswers.map(answer => answer.text),
+          correct: shuffledAnswers.findIndex(answer => answer.isCorrect)
+        };
+      });
+    }
 
     function updateProgress() {
       const completed = current;
-      const percent = Math.round((completed / questions.length) * 100);
-      progressLabel.textContent = `Question ${Math.min(current + 1, questions.length)} of ${questions.length}`;
+      const percent = Math.round((completed / missionQuestions.length) * 100);
+      progressLabel.textContent = `Question ${Math.min(current + 1, missionQuestions.length)} of ${missionQuestions.length}`;
       progressPercent.textContent = `${percent}%`;
       progressFill.style.width = `${percent}%`;
       progressTrack.setAttribute("aria-valuenow", String(completed));
     }
 
     function renderQuestion() {
-      const item = questions[current];
+      const item = missionQuestions[current];
       updateProgress();
       questionNumber.textContent = `Question ${current + 1}`;
       questionTitle.textContent = item.question;
@@ -448,11 +473,11 @@
     }
 
     function selectAnswer(selected) {
-      const item = questions[current];
+      const item = missionQuestions[current];
       const buttons = [...answersElement.querySelectorAll(".answer")];
       buttons.forEach(button => { button.disabled = true; });
-      progressFill.style.width = `${Math.round(((current + 1) / questions.length) * 100)}%`;
-      progressPercent.textContent = `${Math.round(((current + 1) / questions.length) * 100)}%`;
+      progressFill.style.width = `${Math.round(((current + 1) / missionQuestions.length) * 100)}%`;
+      progressPercent.textContent = `${Math.round(((current + 1) / missionQuestions.length) * 100)}%`;
       progressTrack.setAttribute("aria-valuenow", String(current + 1));
       const isCorrect = selected === item.correct;
 
@@ -472,16 +497,16 @@
         feedback.classList.add("is-wrong");
       }
 
-      nextButton.textContent = current === questions.length - 1 ? "See your results" : "Next question";
+      nextButton.textContent = current === missionQuestions.length - 1 ? "See your results" : "Next question";
       nextButton.append(document.createElement("span"));
       nextButton.lastElementChild.setAttribute("aria-hidden", "true");
-      nextButton.lastElementChild.textContent = current === questions.length - 1 ? "✦" : "→";
+      nextButton.lastElementChild.textContent = current === missionQuestions.length - 1 ? "✦" : "→";
       nextButton.hidden = false;
       nextButton.focus();
     }
 
     function showResults() {
-      const percent = score / questions.length;
+      const percent = score / missionQuestions.length;
       const result = percent === 1
         ? ["🏆", "Out of this world!", "Perfect score! You’re a true space expert."]
         : percent >= .7
@@ -493,7 +518,7 @@
       document.querySelector("#result-emoji").textContent = result[0];
       document.querySelector("#result-title").textContent = result[1];
       document.querySelector("#result-copy").textContent = result[2];
-      document.querySelector("#final-score").textContent = `${score}/${questions.length}`;
+      document.querySelector("#final-score").textContent = `${score}/${missionQuestions.length}`;
       quizPanel.hidden = true;
       results.hidden = false;
       scorePill.hidden = true;
@@ -501,6 +526,10 @@
     }
 
     document.querySelector("#start-button").addEventListener("click", () => {
+      current = 0;
+      score = 0;
+      scoreDisplay.textContent = "0";
+      prepareMission();
       intro.hidden = true;
       quizPanel.hidden = false;
       scorePill.hidden = false;
@@ -510,7 +539,7 @@
 
     nextButton.addEventListener("click", () => {
       current += 1;
-      if (current === questions.length) {
+      if (current === missionQuestions.length) {
         showResults();
         return;
       }
