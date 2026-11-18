@@ -306,6 +306,7 @@
     .intro .primary-button, .results .primary-button { width: 100%; margin-top: 3px; }
     .result-score { margin: 15px 0 0; font-size: 17px; font-weight: 700; }
     .result-score strong { color: var(--accent); font-size: 26px; }
+    .personal-best { margin: 12px 0 0; color: var(--accent); font-weight: 750; }
 
     [hidden] { display: none !important; }
 
@@ -351,6 +352,7 @@
       <p class="eyebrow">Mission briefing</p>
       <h1>Ready to explore?</h1>
       <p class="intro-copy">Take a quick trip across our solar system and beyond. Ten questions, one giant leap for your space knowledge.</p>
+      <p class="personal-best" id="intro-best-score"></p>
       <button class="primary-button" id="start-button" type="button">Start your mission <span aria-hidden="true">→</span></button>
     </section>
 
@@ -374,6 +376,7 @@
       <h2 id="result-title">Stellar work!</h2>
       <p class="result-score">You scored <strong id="final-score">0/10</strong></p>
       <p class="result-copy" id="result-copy"></p>
+      <p class="personal-best" id="personal-best-message"></p>
       <button class="primary-button" id="restart-button" type="button">Play again <span aria-hidden="true">↻</span></button>
     </section>
   </main>
@@ -397,6 +400,8 @@
     const results = document.querySelector("#results");
     const scorePill = document.querySelector("#score-pill");
     const scoreDisplay = document.querySelector("#score");
+    const introBestScore = document.querySelector("#intro-best-score");
+    const personalBestMessage = document.querySelector("#personal-best-message");
     const progressLabel = document.querySelector("#progress-label");
     const progressPercent = document.querySelector("#progress-percent");
     const progressTrack = document.querySelector("#progress-track");
@@ -408,6 +413,36 @@
     const nextButton = document.querySelector("#next-button");
     let current = 0;
     let score = 0;
+    const bestScoreKey = "orbitQuizBestScore";
+
+    function getBestScore() {
+      try {
+        const storedScore = localStorage.getItem(bestScoreKey);
+        if (storedScore === null || !/^(0|[1-9]\d*)$/.test(storedScore)) return null;
+        const parsedScore = Number(storedScore);
+        return Number.isSafeInteger(parsedScore) && parsedScore <= questions.length ? parsedScore : null;
+      } catch (error) {
+        console.warn("Unable to read the personal best from browser storage.", error);
+        return null;
+      }
+    }
+
+    function saveBestScore(bestScore) {
+      try {
+        localStorage.setItem(bestScoreKey, String(bestScore));
+        return true;
+      } catch (error) {
+        console.warn("Unable to save the personal best to browser storage.", error);
+        return false;
+      }
+    }
+
+    function updateIntroBestScore() {
+      const bestScore = getBestScore();
+      introBestScore.textContent = bestScore === null
+        ? "No personal best yet — finish a mission to set one."
+        : `Personal best: ${bestScore}/${questions.length}`;
+    }
 
     function updateProgress() {
       const completed = current;
@@ -482,6 +517,14 @@
 
     function showResults() {
       const percent = score / questions.length;
+      const previousBest = getBestScore();
+      if (previousBest === null || score > previousBest) {
+        personalBestMessage.textContent = saveBestScore(score)
+          ? "New personal best!"
+          : "Your new personal best could not be saved in this browser.";
+      } else {
+        personalBestMessage.textContent = `Your personal best remains ${previousBest}/${questions.length}.`;
+      }
       const result = percent === 1
         ? ["🏆", "Out of this world!", "Perfect score! You’re a true space expert."]
         : percent >= .7
@@ -508,6 +551,8 @@
       answersElement.querySelector("button").focus();
     });
 
+    updateIntroBestScore();
+
     nextButton.addEventListener("click", () => {
       current += 1;
       if (current === questions.length) {
@@ -524,6 +569,7 @@
       scoreDisplay.textContent = "0";
       results.hidden = true;
       intro.hidden = false;
+      updateIntroBestScore();
       document.querySelector("#start-button").focus();
     });
   </script>
